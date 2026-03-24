@@ -2,16 +2,47 @@ import telebot
 import random
 import sqlite3
 import time
+from flask import Flask
+from threading import Thread
 
 token = "8662662764:AAFG7KLiNg6L94I56E7PZ5KCLrMlhygiDh4"
 bot = telebot.TeleBot(token)
 
+# ── Keep-alive server (pro Replit) ─────────────────────────────────────────────
+app = Flask('')
 
+
+@app.route('/')
+def home():
+    return "OK"
+
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+
+# ── Databáze ───────────────────────────────────────────────────────────────────
 def db():
     conn = sqlite3.connect('db.db')
     cur = conn.cursor()
-    cur.execute("""CREATE TABLE IF NOT EXISTS user(id INTEGER PRIMARY KEY, size INTEGER, name TEXT, last_play INTEGER)
-    """)
+    cur.execute("""CREATE TABLE IF NOT EXISTS user
+                   (
+                       id
+                       INTEGER
+                       PRIMARY
+                       KEY,
+                       size
+                       INTEGER,
+                       name
+                       TEXT,
+                       last_play
+                       INTEGER
+                   )""")
     conn.commit()
     conn.close()
 
@@ -19,6 +50,7 @@ def db():
 db()
 
 
+# ── Příkazy ────────────────────────────────────────────────────────────────────
 @bot.message_handler(commands=['top_dick'])
 def top_dick(message):
     conn = sqlite3.connect('db.db')
@@ -31,13 +63,13 @@ def top_dick(message):
         a = len(row)
         user = users
         if num == 0:
-            text += f"{num+1}|{user[0]} 🍆 - {user[1]} cm \n"
+            text += f"{num + 1}|{user[0]} 🍆 - {user[1]} cm \n"
         elif num > a:
-            text += f"{num+1}|{user[0]} 🤥 <b>хуйня</b> - {user[1]} cm \n"
+            text += f"{num + 1}|{user[0]} 🤥 <b>хуйня</b> - {user[1]} cm \n"
         else:
-            text += f"{num+1}|{user[0]} - {user[1]} cm \n"
+            text += f"{num + 1}|{user[0]} - {user[1]} cm \n"
 
-    bot.send_message(message.chat.id, f"""{text}""", parse_mode='HTML')
+    bot.send_message(message.chat.id, text, parse_mode='HTML')
     conn.close()
 
 
@@ -56,11 +88,14 @@ def dick(message):
         size = random_num
         cur.execute("INSERT INTO user VALUES (?, ?, ?, ?)",
                     (message.from_user.id, size, message.from_user.first_name, now))
+        bot.send_message(message.chat.id,
+                         f"""<a href="tg://user?id={message.from_user.id}">{message.from_user.first_name}</a>, твой писюн вырос на <b>{random_num}</b> см.
+Теперь он равен <b>{size}</b> см.
+Следующая попытка завтра!""", parse_mode='HTML')
     else:
         cur.execute("SELECT id FROM user ORDER BY size DESC")
         rows = cur.fetchall()
         place = 1
-
         for r in rows:
             if r[0] == message.from_user.id:
                 break
@@ -69,20 +104,21 @@ def dick(message):
         size, last_play = row
 
         if now - last_play < day:
-            bot.send_message(message.chat.id, f"""<a href="tg://user?id={message.from_user.id}">{message.from_user.first_name}</a>, ты уже играл.
+            bot.send_message(message.chat.id,
+                             f"""<a href="tg://user?id={message.from_user.id}">{message.from_user.first_name}</a>, ты уже играл.
 Сейчас он равен {size} см.
 Ты занимаешь {place} место в топе.
 Следующая попытка завтра!""", parse_mode='HTML')
-
+            conn.close()
             return
 
         size = size + random_num
         cur.execute("UPDATE user SET size=?, last_play=? WHERE id=?", (size, now, message.from_user.id))
         bot.send_message(message.chat.id,
-                             f"""<a href="tg://user?id={message.from_user.id}">{message.from_user.first_name}</a>, твой писюн вырос на <b>{random_num}</b> см.
-        Теперь он равен <b>{size}</b> см.
-        Ты занимаешь <b>{place}</b> место в топе
-        Следующая попытка завтра!""", parse_mode='HTML')
+                         f"""<a href="tg://user?id={message.from_user.id}">{message.from_user.first_name}</a>, твой писюн вырос на <b>{random_num}</b> см.
+Теперь он равен <b>{size}</b> см.
+Ты занимаешь <b>{place}</b> место в топе.
+Следующая попытка завтра!""", parse_mode='HTML')
 
     conn.commit()
     conn.close()
@@ -104,7 +140,7 @@ def start(message):
 
 @bot.message_handler(commands=['help'])
 def help(message):
-    bot.send_message(message.chat.id, f"""Команды бота:
+    bot.send_message(message.chat.id, """Команды бота:
 /dick — Вырастить/уменьшить пипису
 /top_dick — Топ 10 пипис чата
 
@@ -128,5 +164,6 @@ def zbor(message):
     bot.send_message(message.chat.id, text, parse_mode="HTML")
 
 
-db()
+# ── Start ──────────────────────────────────────────────────────────────────────
+keep_alive()
 bot.infinity_polling()
