@@ -14,7 +14,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
  
-TOKEN      = os.getenv("BOT_TOKEN")
+TOKEN      = os.getenv("8662662764:AAFG7KLiNg6L94I56E7PZ5KCLrMlhygiDh4")
 ADMIN_ID   = os.getenv("ADMIN_CHAT_ID", "")          # заповниться автоматично при першому /start
 DB_PATH    = "/data/rent.db" if os.path.exists("/data") else "rent.db"
  
